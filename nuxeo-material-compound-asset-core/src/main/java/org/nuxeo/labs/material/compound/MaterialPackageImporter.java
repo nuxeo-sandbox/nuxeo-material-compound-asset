@@ -62,11 +62,12 @@ public class MaterialPackageImporter extends AbstractFileImporter {
     private static final Log log = LogFactory.getLog(MaterialPackageImporter.class);
 
     public boolean isValid(ZipFile zip) {
-        //look for material file
+        // Check if this is a Material package.
+        // This means there's either a u3m or xtex file in the root.
         Enumeration<? extends ZipEntry> entries = zip.entries();
         while (entries.hasMoreElements()) {
             ZipEntry entry = entries.nextElement();
-            if (entry.getName().toLowerCase().endsWith(U3M_EXT)) {
+            if (entry.getName().toLowerCase().endsWith(U3M_EXT) || entry.getName().toLowerCase().endsWith(XTEX_EXT)) {
                 return true;
             }
         }
@@ -78,12 +79,11 @@ public class MaterialPackageImporter extends AbstractFileImporter {
     }
 
 
-    public DocumentModel unzip(CoreSession session, DocumentModel workspace, ZipFile zipFile, Blob blob)
+    public DocumentModel unzip(CoreSession session, DocumentModel materialDoc, ZipFile zipFile, Blob blob)
             throws IOException {
-        FileManager fileManager = Framework.getLocalService(FileManager.class);
+        FileManager fileManager = Framework.getService(FileManager.class);
         Enumeration<? extends ZipEntry> entries = zipFile.entries();
-        ZipEntry materialEntry = null;
-        ZipEntry pdfPreviewEntry = null;
+        ZipEntry materialMetadataFile = null;
         List<Blob> renditions = new ArrayList<>();
 
         DocumentModelList components = new DocumentModelListImpl();
@@ -94,8 +94,6 @@ public class MaterialPackageImporter extends AbstractFileImporter {
                  || fileName.startsWith(".")
                  || fileName.contentEquals("../") //Avoid hacks trying to access a directory outside the current one
                  || fileName.endsWith(".DS_Store")
-                 || fileName.toLowerCase().contains("document fonts/")
-                 || fileName.toLowerCase().endsWith(".txt")
                  || fileName.toLowerCase().endsWith(".idml")) {
              continue;
             }
@@ -104,8 +102,14 @@ public class MaterialPackageImporter extends AbstractFileImporter {
              continue;
             }
 
+            if(fileName.startsWith("textures")){
+                // Create textures folder if it doesn't already exist.
+                // Hint: with the Studio project the textures folder is automatically created.
+                continue;
+            }
+
             if (fileName.toLowerCase().endsWith(U3M_EXT)) {
-                materialEntry = entry;
+                materialMetadataFile = entry;
                 continue;
             }
 
@@ -113,7 +117,6 @@ public class MaterialPackageImporter extends AbstractFileImporter {
                 Blob fileBlob = new FileBlob(zipFile.getInputStream(entry),"application/pdf");
                 fileBlob.setFilename(getFilename(fileName));
                 renditions.add(fileBlob);
-                pdfPreviewEntry = entry;
                 continue;
             }
 
@@ -129,21 +132,20 @@ public class MaterialPackageImporter extends AbstractFileImporter {
                 fileBlob.setFilename(name);
 
                 DocumentModel element = fileManager.createDocumentFromBlob(
-                        session, fileBlob, workspace.getPathAsString(), true, fileBlob.getFilename());
+                        session, fileBlob, materialDoc.getPathAsString(), true, fileBlob.getFilename());
                 components.add(element);
             }
         }
 
-        DocumentModel materialDoc;
+        DocumentModel materialMetadataDoc;
 
-        Blob materialBlob = new FileBlob(zipFile.getInputStream(materialEntry));
-        materialBlob.setFilename(getFilename(materialEntry.getName()));
-        // materialBlob.setMimeType("application/x-indesign");
-        materialDoc = session.createDocumentModel(
-                workspace.getPathAsString(),blob.getFilename(),"File");
-        materialDoc.setPropertyValue("file:content", (Serializable) materialBlob);
-        materialDoc.setPropertyValue("dc:title",materialBlob.getFilename());
-        materialDoc = session.createDocument(materialDoc);
+        Blob materialBlob = new FileBlob(zipFile.getInputStream(materialMetadataFile));
+        materialBlob.setFilename(getFilename(materialMetadataFile.getName()));
+        materialMetadataDoc = session.createDocumentModel(
+                materialDoc.getPathAsString(),blob.getFilename(),"File");
+        materialMetadataDoc.setPropertyValue("file:content", (Serializable) materialBlob);
+        materialMetadataDoc.setPropertyValue("dc:title",materialBlob.getFilename());
+        materialMetadataDoc = session.createDocument(materialMetadataDoc);
 
 
         materialDoc.addFacet(COMPOUND_FACET);
@@ -184,10 +186,10 @@ public class MaterialPackageImporter extends AbstractFileImporter {
                     return null;
                 }
                 String name = filename.substring(0, filename.length() - 4);
-                DocumentModel workspace = session.createDocumentModel(path,name,CONTAINER_TYPE);
-                workspace.setPropertyValue("dc:title",name);
-                workspace = session.createDocument(workspace);
-                return unzip(session,workspace,zip,content);
+                DocumentModel material = session.createDocumentModel(path,name,CONTAINER_TYPE);
+                material.setPropertyValue("dc:title",name);
+                material = session.createDocument(material);
+                return unzip(session,material,zip,content);
             }
         }
     }
