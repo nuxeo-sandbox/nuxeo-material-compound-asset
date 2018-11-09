@@ -1,0 +1,11 @@
+Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: .
+Manifest-Version: 1.0
+Bundle-Vendor: org.nuxeo.labs.material.compound
+Bundle-Version: 1.0.0
+Bundle-Name: nuxeo-material-compound-asset-core
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: nuxeo-material-compound-asset-core;singleton=true
+Nuxeo-Component: OSGI-INF/filemanager-plugin-contrib.xml,
+    OSGI-INF/schema-contrib.xml,
+    OSGI-INF/type-contrib.xml
