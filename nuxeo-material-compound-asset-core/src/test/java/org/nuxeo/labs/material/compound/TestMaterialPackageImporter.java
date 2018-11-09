@@ -64,31 +64,27 @@ public class TestMaterialPackageImporter {
         File file = new File(getClass().getResource("/files/sample.zip").getPath());
         Blob blob = new FileBlob(file);
         DocumentModel root = coreSession.getRootDocument();
-        DocumentModel compound = fileManager.createDocumentFromBlob(coreSession,blob,root.getPathAsString(),true,file.getName());
-        Assert.assertNotNull(compound);
 
-        Assert.assertEquals("sample.u3m",compound.getPropertyValue("dc:title"));
+        DocumentModel material = fileManager.createDocumentFromBlob(coreSession,blob,root.getPathAsString(),true,file.getName());
 
-        String elements[] = (String[]) compound.getPropertyValue(COMPONENTS_XPATH);
-        Assert.assertEquals(3,elements.length);
+        Assert.assertNotNull(material);
 
-        List<Blob> renditions= (List<Blob>) compound.getPropertyValue("compound:renditions");
+        Assert.assertEquals("sample",material.getPropertyValue("dc:title"));
+
+        // There are two textures included in the sample.
+        String textures[] = (String[]) material.getPropertyValue(COMPONENTS_XPATH);
+        Assert.assertEquals(2,textures.length);
+
+        // There's one preview image in the sample.
+        List<Blob> renditions= (List<Blob>) material.getPropertyValue("compound:renditions");
         Assert.assertEquals(1,renditions.size());
 
-        DocumentModel folder = coreSession.getDocument(compound.getParentRef());
-        Assert.assertEquals("sample",folder.getPropertyValue("dc:title"));
+        // Get the u3m file, check the title
+        DocumentModel u3mFile = coreSession.getDocument(coreSession.getChild(material.getRef(),"sample.u3m").getRef());
+        Assert.assertEquals("sample.u3m",u3mFile.getPropertyValue("dc:title"));
 
-        DocumentModelList children = coreSession.getChildren(compound.getParentRef());
-        Assert.assertEquals(4,children.totalSize());
-
-        for(DocumentModel component : children) {
-            if (!component.getId().equals(compound.getId())) {
-                String compounds[] = (String[]) component.getPropertyValue(COMPOUNDS_XPATH);
-                Assert.assertNotNull(compounds);
-                List<String> compoundList = Arrays.asList(compounds);
-                Assert.assertTrue(compoundList.contains(compound.getId()));
-            }
-        }
-
+        // There's 3 children in the sample
+        DocumentModelList children = coreSession.getChildren(material.getRef());
+        Assert.assertEquals(3,children.totalSize());
     }
 }
