@@ -1,5 +1,7 @@
 # About
 
+[![Build Status](https://qa.nuxeo.org/jenkins/buildStatus/icon?job=Sandbox/sandbox_nuxeo-material-compound-asset-master)](https://qa.nuxeo.org/jenkins/job/Sandbox/job/sandbox_nuxeo-material-compound-asset-master/)
+
 This plugin provides a filemanager plugin to import Material packages in the Nuxeo Platform
 
 WIP: this plugin relies on a Studio configuration currently, specifically it requires a document type named "Material".
