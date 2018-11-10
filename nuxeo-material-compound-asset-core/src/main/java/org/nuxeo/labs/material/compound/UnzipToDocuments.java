@@ -166,6 +166,7 @@ public class UnzipToDocuments {
                 parentFolderForNewEntry = session.getDocument(repoPathRefToCurrentDoc);
             }
 
+            // The top-level folderish is the document we should return.
             if (i == 0 && rootDocument == null) {
                 rootDocument = parentFolderForNewEntry;
             }
