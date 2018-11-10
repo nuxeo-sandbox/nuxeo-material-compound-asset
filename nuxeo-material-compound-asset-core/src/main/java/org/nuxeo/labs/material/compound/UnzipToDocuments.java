@@ -134,6 +134,8 @@ public class UnzipToDocuments {
 
     private DocumentModel createFolders(String entryPath) {
         // TODO not implemented;
+        // If this is the top level folder, use rootFolderishType
+        // Else use childFolderishType
         DocumentModel parentFolder = null;
         return parentFolder;
     }
