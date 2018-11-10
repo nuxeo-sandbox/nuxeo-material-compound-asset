@@ -20,7 +20,6 @@
 
 package org.nuxeo.labs.material.compound;
 
-import nuxeo.zip.utils.UnzipToDocuments;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.nuxeo.common.utils.FileUtils;
@@ -38,6 +37,8 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.*;
+
 /**
  * Imports Material Zip package into Nuxeo.
  *
@@ -45,26 +46,6 @@ import java.util.zip.ZipFile;
  */
 public class MaterialPackageImporter extends AbstractFileImporter {
 
-    public static final String EXTENSION_U3M = "u3m";
-    public static final String EXTENSION_XTEX = "xtex";
-
-    public static final List SUPPORTED_EXTENSIONS = new ArrayList<String>() {
-        {
-            add(EXTENSION_U3M);
-            add(EXTENSION_XTEX);
-        }
-    };
-
-    public static final String COMPOUND_FACET = "CompoundDocument";
-    public static final String COMPONENT_FACET = "ComponentDocument";
-
-    public static final String COMPONENTS_XPATH = "compound:docs";
-    public static final String ARCHIVE_XPATH = "compound:archive";
-    public static final String RENDITIONS_XPATH = "compound:renditions";
-
-    public static final String COMPOUNDS_XPATH = "componentdoc:usedin";
-
-    public static final String CONTAINER_TYPE = "Material";
 
     private static final Log log = LogFactory.getLog(MaterialPackageImporter.class);
 
@@ -178,13 +159,13 @@ public class MaterialPackageImporter extends AbstractFileImporter {
 
                 String name = filename.substring(0, filename.length() - 4);
 
-                UnzipToDocuments unzipToDocs = new UnzipToDocuments(targetFolderishDoc, content);
-                unzipToDocs.setMainFolderishType(CONTAINER_TYPE);
-                unzipToDocs.setMainFolderishName(name);
+                UnzipToDocuments unzipToDocs = new UnzipToDocuments(targetFolderishDoc, content, ROOT_FOLDERISH_TYPE, CHILD_FOLDERISH_TYPE);
+
+                // First extract the zip file, creating Nuxeo documents...
                 DocumentModel materialDoc = unzipToDocs.run();
 
+                // Then process those documents (add facets, copy data, etc.)
                 materialDoc = this.process(session, materialDoc, content);
-
 
                 return materialDoc;
 

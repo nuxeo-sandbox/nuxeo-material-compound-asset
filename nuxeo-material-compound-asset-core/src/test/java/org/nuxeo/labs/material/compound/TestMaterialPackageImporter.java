@@ -41,7 +41,7 @@ import org.nuxeo.runtime.transaction.TransactionHelper;
 import javax.inject.Inject;
 import java.io.File;
 
-import static org.nuxeo.labs.material.compound.MaterialPackageImporter.COMPONENTS_XPATH;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.COMPONENTS_XPATH;
 
 @RunWith(FeaturesRunner.class)
 @Features(PlatformFeature.class)
