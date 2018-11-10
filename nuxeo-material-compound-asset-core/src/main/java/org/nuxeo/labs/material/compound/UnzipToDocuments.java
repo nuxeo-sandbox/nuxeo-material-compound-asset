@@ -1,17 +1,12 @@
 package org.nuxeo.labs.material.compound;
 
-import com.sun.xml.internal.bind.v2.TODO;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.nuxeo.ecm.core.api.Blob;
-import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.api.NuxeoException;
+import org.nuxeo.ecm.core.api.*;
 import org.nuxeo.ecm.core.api.impl.blob.FileBlob;
 import org.nuxeo.ecm.platform.filemanager.api.FileManager;
 import org.nuxeo.runtime.api.Framework;
-import org.nuxeo.runtime.transaction.TransactionHelper;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -38,6 +33,8 @@ public class UnzipToDocuments {
     protected String childFolderishType;
 
     protected String rootFolderishType;
+
+    private DocumentModel rootDocument;
 
     public UnzipToDocuments(DocumentModel parentDoc, Blob zipBlob, String rootFolderishType, String childFolderishType) {
         this.parentDoc = parentDoc;
@@ -69,30 +66,32 @@ public class UnzipToDocuments {
 
             Path pathToTempFolder = Framework.createTempDirectory(rootFolderishType + "-Unzip");
             tempFolderFile = new File(pathToTempFolder.toString());
-            boolean isMainUzippedFolderDoc = false;
             File zipBlobFile = zipBlob.getFile();
             zipFile = new ZipFile(zipBlobFile);
-
             Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
             while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                DocumentModel parentFolder = null;
 
+                DocumentModel parentFolderDoc;
+                ZipEntry entry = entries.nextElement();
                 String entryPath = entry.getName();
+
                 if (shouldIgnoreEntry(entryPath)) {
                     continue;
                 }
 
-                // Does this entry contain folders?
-                if (containsFolders(entryPath)) {
-                    // If so, create them
-                    parentFolder = createFolders(entryPath);
-                }
+                Boolean isDirectory = entry.isDirectory();
 
-                // Then create the file
-                File newFile = new File(pathToTempFolder.toString() + File.separator + entryPath);
-                if(newFile.mkdirs()) {
+                // Create folderish documents as needed and get the parent for the File
+                parentFolderDoc = handleFolders(session, entryPath, isDirectory);
+
+                // I only need to unzip the files, not the folders, folderish docs are created by handleFolders()
+                if (!isDirectory) {
+                    String systemPath = pathToTempFolder.toString() + File.separator + entryPath;
+                    File newFile = new File(systemPath);
+                    if (!newFile.getParentFile().exists()) {
+                        newFile.getParentFile().mkdirs();
+                    }
                     FileOutputStream fos = new FileOutputStream(newFile);
                     InputStream zipEntryStream = zipFile.getInputStream(entry);
                     int len;
@@ -102,21 +101,19 @@ public class UnzipToDocuments {
                     }
                     fos.close();
 
-                    // Import
-                    FileBlob blob = new FileBlob(newFile);
-                    fileManager.createDocumentFromBlob(session, blob, parentFolder.getPathAsString(), true, blob.getFilename());
+                    if (parentFolderDoc != null) {
+                        // Import
+                        FileBlob blob = new FileBlob(newFile);
+                        fileManager.createDocumentFromBlob(session, blob, parentFolderDoc.getPathAsString(), true, blob.getFilename());
+                    }
                 }
 
             }
 
         } catch (IOException e) {
-
             throw new NuxeoException("Error while unzipping and creating Documents", e);
-
         } finally {
-
             org.apache.commons.io.FileUtils.deleteQuietly(tempFolderFile);
-
             try {
                 zipFile.close();
             } catch (IOException e) {
@@ -127,18 +124,57 @@ public class UnzipToDocuments {
         return rootDocument;
     }
 
-    private boolean containsFolders(String entryPath) {
-        // TODO not implemented;
-        return false;
+    /**
+     * Given a path from the zip file, make sure there are folderish documents in Nuxeo for each folder.
+     *
+     * @param session
+     * @param entryPath
+     * @param isDirectory
+     * @return
+     */
+    private DocumentModel handleFolders(CoreSession session, String entryPath, Boolean isDirectory) {
+        DocumentModel parentFolderForNewEntry = null;
+
+        String repoPathToCurrentDoc = parentDoc.getPathAsString();
+        String repoPathToCurrentDocParent = parentDoc.getPathAsString();
+        String[] pathParts = entryPath.split("/");
+
+        int limit;
+        if (isDirectory)
+            limit = pathParts.length;
+        else
+            limit = pathParts.length - 1;
+
+        for (int i = 0; i < limit; i++) {
+
+            String docType;
+
+            if (i == 0) {
+                docType = rootFolderishType;
+            } else {
+                docType = childFolderishType;
+            }
+
+            repoPathToCurrentDoc += "/" + pathParts[i];
+
+            // Test to see if the document already exists...
+            PathRef repoPathRefToCurrentDoc = new PathRef(repoPathToCurrentDoc);
+            if (!session.exists(repoPathRefToCurrentDoc)) {
+                parentFolderForNewEntry = session.createDocument(session.createDocumentModel(repoPathToCurrentDocParent, pathParts[i], docType));
+
+            } else {
+                parentFolderForNewEntry = session.getDocument(repoPathRefToCurrentDoc);
+            }
+
+            if (i == 0 && rootDocument == null)
+                rootDocument = parentFolderForNewEntry;
+        }
+
+        repoPathToCurrentDocParent += "/" + pathParts[i];
     }
 
-    private DocumentModel createFolders(String entryPath) {
-        // TODO not implemented;
-        // If this is the top level folder, use rootFolderishType
-        // Else use childFolderishType
-        DocumentModel parentFolder = null;
-        return parentFolder;
-    }
+        return parentFolderForNewEntry;
+}
 
     private boolean shouldIgnoreEntry(String fileName) {
         if (fileName.startsWith("__MACOSX/")
