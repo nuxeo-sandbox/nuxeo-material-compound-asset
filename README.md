@@ -6,6 +6,10 @@ This plugin provides a filemanager plugin to import Material packages in the Nux
 
 WIP: this plugin relies on a Studio configuration currently, specifically it requires a document type named "Material".
 
+# Usage
+
+Supports drag and drop import of Material packages-as-zip.
+
 # Build
 
 Assuming maven is correctly setup on your computer:
@@ -18,11 +22,6 @@ mvn package
 # Install
 
 Install the package on your instance.
-
-
-# Limitations
-
-The class `nuxeo.zip.utils.UnzipToDocuments` is copied from [nuxeo-zip-utils](https://github.com/nuxeo-sandbox/nuxeo-zip-utils). I did not add it as a dependency since it's published in a private repo currently. TODO: add dependency when `nuxeo-zip-utils` is published.
 
 # About Nuxeo
 
