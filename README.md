@@ -1,8 +1,8 @@
 # About
 
-This plugin provides a filemanager plugin to import material packages in the Nuxeo Platform
+This plugin provides a filemanager plugin to import Material packages in the Nuxeo Platform
 
-WIP: this plugin relies on a Studio configuration currently.
+WIP: this plugin relies on a Studio configuration currently, specifically it requires a document type named "Material".
 
 # Build
 
@@ -17,6 +17,10 @@ mvn package
 
 Install the package on your instance.
 
+
+# Limitations
+
+The class `nuxeo.zip.utils.UnzipToDocuments` is copied from [nuxeo-zip-utils](https://github.com/nuxeo-sandbox/nuxeo-zip-utils). I did not add it as a dependency since it's published in a private repo currently. TODO: add dependency when `nuxeo-zip-utils` is published.
 
 # About Nuxeo
 

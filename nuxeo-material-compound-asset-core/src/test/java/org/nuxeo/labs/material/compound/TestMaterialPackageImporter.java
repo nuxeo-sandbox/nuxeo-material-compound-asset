@@ -20,6 +20,7 @@
 package org.nuxeo.labs.material.compound;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nuxeo.ecm.core.api.Blob;
@@ -35,14 +36,12 @@ import org.nuxeo.ecm.platform.test.PlatformFeature;
 import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
+import org.nuxeo.runtime.transaction.TransactionHelper;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
 
 import static org.nuxeo.labs.material.compound.MaterialPackageImporter.COMPONENTS_XPATH;
-import static org.nuxeo.labs.material.compound.MaterialPackageImporter.COMPOUNDS_XPATH;
 
 @RunWith(FeaturesRunner.class)
 @Features(PlatformFeature.class)
@@ -51,6 +50,7 @@ import static org.nuxeo.labs.material.compound.MaterialPackageImporter.COMPOUNDS
     "nuxeo-material-compound-asset-core",
     "org.nuxeo.ecm.platform.filemanager.core",
     "org.nuxeo.ecm.platform.types.core"})
+@Deploy("nuxeo-material-compound-asset-core:OSGI-INF/type-contrib.xml")
 public class TestMaterialPackageImporter {
 
     @Inject
@@ -59,32 +59,48 @@ public class TestMaterialPackageImporter {
     @Inject
     protected FileManager fileManager;
 
+
+    protected DocumentModel testDocsFolder;
+
+    @Before
+    public void setup() {
+
+        testDocsFolder = coreSession.createDocumentModel("/", "test-unzip", "Folder");
+        testDocsFolder.setPropertyValue("dc:title", "test-unzip");
+        testDocsFolder = coreSession.createDocument(testDocsFolder);
+        testDocsFolder = coreSession.saveDocument(testDocsFolder);
+
+        coreSession.save();
+
+        TransactionHelper.commitOrRollbackTransaction();
+        TransactionHelper.startTransaction();
+    }
+
     @Test
     public void testImportViaFileManager() throws Exception {
         File file = new File(getClass().getResource("/files/sample.zip").getPath());
         Blob blob = new FileBlob(file);
-        DocumentModel root = coreSession.getRootDocument();
+        DocumentModel root = testDocsFolder;
 
-        DocumentModel material = fileManager.createDocumentFromBlob(coreSession,blob,root.getPathAsString(),true,file.getName());
+        DocumentModel material = fileManager.createDocumentFromBlob(coreSession, blob, root.getPathAsString(), true, file.getName());
 
         Assert.assertNotNull(material);
 
-        Assert.assertEquals("sample",material.getPropertyValue("dc:title"));
+        Assert.assertEquals("sample", material.getPropertyValue("dc:title"));
 
-        // There are two textures included in the sample.
-        String textures[] = (String[]) material.getPropertyValue(COMPONENTS_XPATH);
-        Assert.assertEquals(2,textures.length);
+        // Check the type of the result.
+        Assert.assertEquals("Material", material.getType());
 
-        // There's one preview image in the sample.
-        List<Blob> renditions= (List<Blob>) material.getPropertyValue("compound:renditions");
-        Assert.assertEquals(1,renditions.size());
+        // There are 4 total files included in the sample.
+        String components[] = (String[]) material.getPropertyValue(COMPONENTS_XPATH);
+        Assert.assertEquals(4, components.length);
 
         // Get the u3m file, check the title
-        DocumentModel u3mFile = coreSession.getDocument(coreSession.getChild(material.getRef(),"sample.u3m").getRef());
-        Assert.assertEquals("sample.u3m",u3mFile.getPropertyValue("dc:title"));
+        DocumentModel u3mFile = coreSession.getDocument(coreSession.getChild(material.getRef(), "sample.u3m").getRef());
+        Assert.assertEquals("sample.u3m", u3mFile.getPropertyValue("dc:title"));
 
         // There's 3 children in the sample
         DocumentModelList children = coreSession.getChildren(material.getRef());
-        Assert.assertEquals(3,children.totalSize());
+        Assert.assertEquals(3, children.totalSize());
     }
 }

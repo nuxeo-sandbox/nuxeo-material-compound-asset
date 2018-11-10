@@ -20,15 +20,14 @@
 
 package org.nuxeo.labs.material.compound;
 
+import nuxeo.zip.utils.UnzipToDocuments;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.nuxeo.common.utils.FileUtils;
 import org.nuxeo.ecm.core.api.*;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
-import org.nuxeo.ecm.core.api.impl.blob.FileBlob;
-import org.nuxeo.ecm.platform.filemanager.api.FileManager;
 import org.nuxeo.ecm.platform.filemanager.service.extension.AbstractFileImporter;
 import org.nuxeo.ecm.platform.types.TypeManager;
-import org.nuxeo.runtime.api.Framework;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -40,12 +39,21 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /**
- * Simple Plugin that imports Material Zip package into Nuxeo.
+ * Imports Material Zip package into Nuxeo.
+ *
+ * @since 10.2
  */
 public class MaterialPackageImporter extends AbstractFileImporter {
 
-    public static final String U3M_EXT = ".u3m";
-    public static final String XTEX_EXT = ".xtex";
+    public static final String EXTENSION_U3M = "u3m";
+    public static final String EXTENSION_XTEX = "xtex";
+
+    public static final List SUPPORTED_EXTENSIONS = new ArrayList<String>() {
+        {
+            add(EXTENSION_U3M);
+            add(EXTENSION_XTEX);
+        }
+    };
 
     public static final String COMPOUND_FACET = "CompoundDocument";
     public static final String COMPONENT_FACET = "ComponentDocument";
@@ -58,122 +66,101 @@ public class MaterialPackageImporter extends AbstractFileImporter {
 
     public static final String CONTAINER_TYPE = "Material";
 
-
     private static final Log log = LogFactory.getLog(MaterialPackageImporter.class);
 
+    /**
+     * Check to see if this is a Materials zip.
+     *
+     * @param zip
+     * @return
+     */
     public boolean isValid(ZipFile zip) {
         // Check if this is a Material package.
-        // This means there's either a u3m or xtex file in the root.
         Enumeration<? extends ZipEntry> entries = zip.entries();
         while (entries.hasMoreElements()) {
             ZipEntry entry = entries.nextElement();
-            if (entry.getName().toLowerCase().endsWith(U3M_EXT) || entry.getName().toLowerCase().endsWith(XTEX_EXT)) {
+            if (SUPPORTED_EXTENSIONS.contains(FileUtils.getFileExtension(entry.getName().toLowerCase()))) {
                 return true;
             }
         }
         return false;
     }
 
-    public String getFilename(String path) {
-        return path.split("/")[path.split("/").length - 1];
+    /**
+     * Recurse the package and add any assets as components to the compound document.
+     *
+     * @param session
+     * @param materialDocId
+     * @param components
+     * @param root
+     */
+    private void updateComponents(CoreSession session, String materialDocId, DocumentModelList components, DocumentModel root) {
+        if (root.hasFacet("Folderish")) {
+            DocumentModelList children = session.getChildren(root.getRef());
+            for (DocumentModel child : children) {
+                updateComponents(session, materialDocId, components, child);
+            }
+        } else {
+            updateComponent(materialDocId, components, root);
+        }
     }
 
-
-    public DocumentModel unzip(CoreSession session, DocumentModel materialDoc, ZipFile zipFile, Blob blob)
-            throws IOException {
-        FileManager fileManager = Framework.getService(FileManager.class);
-        Enumeration<? extends ZipEntry> entries = zipFile.entries();
-        ZipEntry materialMetadataFile = null;
-        List<Blob> renditions = new ArrayList<>();
-
-        DocumentModelList components = new DocumentModelListImpl();
-        while (entries.hasMoreElements()) {
-            ZipEntry entry = entries.nextElement();
-            String fileName = entry.getName();
-            if (fileName.startsWith("__MACOSX/")
-                 || fileName.startsWith(".")
-                 || fileName.contentEquals("../") //Avoid hacks trying to access a directory outside the current one
-                 || fileName.endsWith(".DS_Store")
-                 || fileName.toLowerCase().endsWith(".idml")) {
-             continue;
-            }
-
-            if (entry.isDirectory()) {
-             continue;
-            }
-
-            if(fileName.startsWith("textures")){
-                // Create textures folder if it doesn't already exist.
-                // Hint: with the Studio project the textures folder is automatically created.
-                continue;
-            }
-
-            if (fileName.toLowerCase().endsWith(U3M_EXT)) {
-                materialMetadataFile = entry;
-                continue;
-            }
-
-            if (fileName.toLowerCase().endsWith(XTEX_EXT)) {
-                Blob fileBlob = new FileBlob(zipFile.getInputStream(entry),"application/pdf");
-                fileBlob.setFilename(getFilename(fileName));
-                renditions.add(fileBlob);
-                continue;
-            }
-
-            String name = getFilename(fileName);
-
-            //check if duplicates
-            String query = String.format("Select * FROM Document Where dc:title='%s' AND ecm:isCheckedInVersion = 0 AND ecm:isProxy = 0",name);
-            DocumentModelList duplicates = session.query(query);
-            if (duplicates.size()>0) {
-                components.add(duplicates.get(0));
-            } else {
-                Blob fileBlob = new FileBlob(zipFile.getInputStream(entry));
-                fileBlob.setFilename(name);
-
-                DocumentModel element = fileManager.createDocumentFromBlob(
-                        session, fileBlob, materialDoc.getPathAsString(), true, fileBlob.getFilename());
-                components.add(element);
-            }
+    /**
+     * Update component metadata.
+     *
+     * @param materialDocId
+     * @param components
+     * @param component
+     */
+    private void updateComponent(String materialDocId, DocumentModelList components, DocumentModel component) {
+        // Add the ComponentDocument facet to each component
+        if (!component.hasFacet(COMPONENT_FACET)) {
+            component.addFacet(COMPONENT_FACET);
         }
 
-        DocumentModel materialMetadataDoc;
+        // Add the componentdoc:usedin value to each component
+        String usedIn[] = (String[]) component.getPropertyValue(COMPOUNDS_XPATH);
+        List<String> usedInList = usedIn != null ? new ArrayList<>(Arrays.asList(usedIn)) : new ArrayList<>();
+        if (!usedInList.contains(materialDocId)) {
+            usedInList.add(materialDocId);
+            component.setPropertyValue(COMPOUNDS_XPATH, (Serializable) usedInList);
+        }
+        components.add(component);
+    }
 
-        Blob materialBlob = new FileBlob(zipFile.getInputStream(materialMetadataFile));
-        materialBlob.setFilename(getFilename(materialMetadataFile.getName()));
-        materialMetadataDoc = session.createDocumentModel(
-                materialDoc.getPathAsString(),blob.getFilename(),"File");
-        materialMetadataDoc.setPropertyValue("file:content", (Serializable) materialBlob);
-        materialMetadataDoc.setPropertyValue("dc:title",materialBlob.getFilename());
-        materialMetadataDoc = session.createDocument(materialMetadataDoc);
+    /**
+     * After the zip is imported, this method "massages" the documents.
+     *
+     * @param session
+     * @param materialDoc
+     * @param blob
+     * @return
+     */
+    public DocumentModel process(CoreSession session, DocumentModel materialDoc, Blob blob) {
 
-
+        // Add the CompoundDocument facet to the Material
         materialDoc.addFacet(COMPOUND_FACET);
 
+        // Save the zip BLOB so we have a copy
+        materialDoc.setPropertyValue(ARCHIVE_XPATH, (Serializable) blob);
+
+        // TODO: (optional) specify which files are "renditions" of the Material
+
+        // Add anything that's not folderish as a component
+        // TODO: (optional) Locate the contents of the textures folder, add them as components instead of adding everything.
+        DocumentModelList components = new DocumentModelListImpl();
+        updateComponents(session, materialDoc.getId(), components, materialDoc);
+
         List<String> componentIds = new ArrayList<>();
-        for(DocumentModel component: components) {
+        for (DocumentModel component : components) {
             componentIds.add(component.getId());
         }
 
         materialDoc.setPropertyValue(COMPONENTS_XPATH, (Serializable) componentIds);
-        materialDoc.setPropertyValue(ARCHIVE_XPATH, (Serializable) blob);
-        materialDoc.setPropertyValue(RENDITIONS_XPATH, (Serializable) renditions);
+
         session.saveDocument(materialDoc);
-
-        //update components
-        for(DocumentModel component:components) {
-             if (!component.hasFacet(COMPONENT_FACET)) {
-                 component.addFacet(COMPONENT_FACET);
-            }
-            String compounds[] = (String[]) component.getPropertyValue(COMPOUNDS_XPATH);
-            List<String> compoundList = compounds != null ? new ArrayList<>(Arrays.asList(compounds)) : new ArrayList<>();
-            if (!compoundList.contains(materialDoc.getId())) {
-                compoundList.add(materialDoc.getId());
-                component.setPropertyValue(COMPOUNDS_XPATH, (Serializable) compoundList);
-            }
-        }
-
         session.saveDocuments(components.toArray(new DocumentModel[]{}));
+
         return materialDoc;
 
     }
@@ -185,11 +172,22 @@ public class MaterialPackageImporter extends AbstractFileImporter {
                 if (!isValid(zip)) {
                     return null;
                 }
+
+                PathRef targetFolderishPathRef = new PathRef(path);
+                DocumentModel targetFolderishDoc = session.getDocument(targetFolderishPathRef);
+
                 String name = filename.substring(0, filename.length() - 4);
-                DocumentModel material = session.createDocumentModel(path,name,CONTAINER_TYPE);
-                material.setPropertyValue("dc:title",name);
-                material = session.createDocument(material);
-                return unzip(session,material,zip,content);
+
+                UnzipToDocuments unzipToDocs = new UnzipToDocuments(targetFolderishDoc, content);
+                unzipToDocs.setMainFolderishType(CONTAINER_TYPE);
+                unzipToDocs.setMainFolderishName(name);
+                DocumentModel materialDoc = unzipToDocs.run();
+
+                materialDoc = this.process(session, materialDoc, content);
+
+
+                return materialDoc;
+
             }
         }
     }
