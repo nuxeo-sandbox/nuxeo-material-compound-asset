@@ -57,7 +57,6 @@ public class UnzipToDocuments {
 
         File tempFolderFile = null;
         ZipFile zipFile = null;
-        DocumentModel rootDocument = null;
 
         CoreSession session = parentDoc.getCoreSession();
         FileManager fileManager = Framework.getService(FileManager.class);
@@ -161,7 +160,8 @@ public class UnzipToDocuments {
             PathRef repoPathRefToCurrentDoc = new PathRef(repoPathToCurrentDoc);
             if (!session.exists(repoPathRefToCurrentDoc)) {
                 parentFolderForNewEntry = session.createDocument(session.createDocumentModel(repoPathToCurrentDocParent, pathParts[i], docType));
-
+                parentFolderForNewEntry.setPropertyValue("dc:title",pathParts[i]);
+                session.saveDocument(parentFolderForNewEntry);
             } else {
                 parentFolderForNewEntry = session.getDocument(repoPathRefToCurrentDoc);
             }

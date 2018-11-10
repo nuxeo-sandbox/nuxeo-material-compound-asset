@@ -28,3 +28,5 @@ bin/
 *~bak
 *-bak
 *.bak
+nuxeo-material-compound-asset-core/src/test/java/org/nuxeo/labs/material/compound/TestMaterialPackageImporterLocal.java
+nuxeo-material-compound-asset-core/src/test/resources/files/BlackFabric.zip
