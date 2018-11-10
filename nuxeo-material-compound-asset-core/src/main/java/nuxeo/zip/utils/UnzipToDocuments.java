@@ -121,8 +121,8 @@ public class UnzipToDocuments {
             mainParentFolderOnDisk = new File(outDirPath.toString());
             boolean isMainUzippedFolderDoc = false;
 
-            // We must order the zip by names (full path names), so we make sure we cill create
-            // the Container before trying to create their content. For example,, as the entries
+            // We must order the zip by names (full path names), so we make sure we will create
+            // the Container before trying to create their content. For example, as the entries
             // are ordered by hash, we may receive "folder1/file.txt" before receiving "folder1/"
             // Using a TreeMap to order by name
             File zipBlobFile = zipBlob.getFile();
