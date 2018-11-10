@@ -166,15 +166,15 @@ public class UnzipToDocuments {
                 parentFolderForNewEntry = session.getDocument(repoPathRefToCurrentDoc);
             }
 
-            if (i == 0 && rootDocument == null)
+            if (i == 0 && rootDocument == null) {
                 rootDocument = parentFolderForNewEntry;
+            }
+
+            repoPathToCurrentDocParent += "/" + pathParts[i];
         }
 
-        repoPathToCurrentDocParent += "/" + pathParts[i];
-    }
-
         return parentFolderForNewEntry;
-}
+    }
 
     private boolean shouldIgnoreEntry(String fileName) {
         if (fileName.startsWith("__MACOSX/")
