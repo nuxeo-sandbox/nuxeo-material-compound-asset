@@ -50,7 +50,7 @@ import static org.nuxeo.labs.material.compound.MaterialPackageImporter.COMPONENT
     "nuxeo-material-compound-asset-core",
     "org.nuxeo.ecm.platform.filemanager.core",
     "org.nuxeo.ecm.platform.types.core"})
-@Deploy("nuxeo-material-compound-asset-core:OSGI-INF/type-contrib.xml")
+@Deploy("nuxeo-material-compound-asset-core:OSGI-INF/type-contrib-test.xml")
 public class TestMaterialPackageImporter {
 
     @Inject
