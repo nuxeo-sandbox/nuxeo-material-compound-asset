@@ -86,6 +86,7 @@ public class TestMaterialPackageImporter {
 
         Assert.assertNotNull(material);
 
+        // Material name should be the name of the zip, without the extension
         Assert.assertEquals("sample", material.getPropertyValue("dc:title"));
 
         // Check the type of the result.
