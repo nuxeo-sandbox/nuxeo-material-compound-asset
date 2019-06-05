@@ -31,6 +31,7 @@ import org.nuxeo.ecm.core.api.impl.blob.FileBlob;
 import org.nuxeo.ecm.core.test.DefaultRepositoryInit;
 import org.nuxeo.ecm.core.test.annotations.Granularity;
 import org.nuxeo.ecm.core.test.annotations.RepositoryConfig;
+import org.nuxeo.ecm.platform.filemanager.api.FileImporterContext;
 import org.nuxeo.ecm.platform.filemanager.api.FileManager;
 import org.nuxeo.ecm.platform.test.PlatformFeature;
 import org.nuxeo.runtime.test.runner.Deploy;
@@ -82,7 +83,13 @@ public class TestMaterialPackageImporter {
         Blob blob = new FileBlob(file);
         DocumentModel root = testDocsFolder;
 
-        DocumentModel material = fileManager.createDocumentFromBlob(coreSession, blob, root.getPathAsString(), true, file.getName());
+        FileImporterContext context = FileImporterContext.builder(coreSession,
+            blob, root.getPathAsString())
+            .overwrite(true)
+            .fileName(file.getName())
+            .build();
+
+        DocumentModel material = fileManager.createOrUpdateDocument(context);
 
         Assert.assertNotNull(material);
 

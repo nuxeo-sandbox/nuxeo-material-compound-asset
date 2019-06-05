@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.nuxeo.common.utils.FileUtils;
 import org.nuxeo.ecm.core.api.*;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
+import org.nuxeo.ecm.platform.filemanager.api.FileImporterContext;
 import org.nuxeo.ecm.platform.filemanager.service.extension.AbstractFileImporter;
 import org.nuxeo.ecm.platform.types.TypeManager;
 
@@ -146,26 +147,24 @@ public class MaterialPackageImporter extends AbstractFileImporter {
 
     }
 
-    public DocumentModel create(CoreSession session, Blob content, String path, boolean overwrite,
-                                String filename, TypeManager typeService) throws IOException {
-        try (CloseableFile source = content.getCloseableFile()) {
+    @Override
+    public DocumentModel createOrUpdate(FileImporterContext context) throws IOException {
+        try (CloseableFile source = context.getBlob().getCloseableFile()) {
             try (ZipFile zip = new ZipFile(source.getFile())) {
                 if (!isValid(zip)) {
                     return null;
                 }
 
-                PathRef targetFolderishPathRef = new PathRef(path);
-                DocumentModel targetFolderishDoc = session.getDocument(targetFolderishPathRef);
+                PathRef targetFolderishPathRef = new PathRef(context.getParentPath());
+                DocumentModel targetFolderishDoc = context.getSession().getDocument(targetFolderishPathRef);
 
-                String name = filename.substring(0, filename.length() - 4);
-
-                UnzipToDocuments unzipToDocs = new UnzipToDocuments(targetFolderishDoc, content, ROOT_FOLDERISH_TYPE, CHILD_FOLDERISH_TYPE);
+                UnzipToDocuments unzipToDocs = new UnzipToDocuments(targetFolderishDoc, context.getBlob(), ROOT_FOLDERISH_TYPE, CHILD_FOLDERISH_TYPE);
 
                 // First extract the zip file, creating Nuxeo documents...
                 DocumentModel materialDoc = unzipToDocs.run();
 
                 // Then process those documents (add facets, copy data, etc.)
-                materialDoc = this.process(session, materialDoc, content);
+                materialDoc = this.process(context.getSession(), materialDoc, context.getBlob());
 
                 return materialDoc;
 

@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.nuxeo.labs.material.compound</groupId>
     <artifactId>nuxeo-material-compound-asset-parent</artifactId>
-    <version>10.2-SNAPSHOT</version>
+    <version>10.10-SNAPSHOT</version>
   </parent>
   <artifactId>nuxeo-material-compound-asset-core</artifactId>
   <name>Nuxeo material compound asset core</name>
