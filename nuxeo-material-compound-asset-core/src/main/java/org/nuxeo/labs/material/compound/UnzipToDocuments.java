@@ -43,10 +43,6 @@ public class UnzipToDocuments {
         this.rootFolderishType = StringUtils.isBlank(rootFolderishType) ? DEFAULT_FOLDERISH_TYPE : rootFolderishType;
     }
 
-    public UnzipToDocuments(DocumentModel parentDoc, Blob zipBlob) {
-        this(parentDoc, zipBlob, DEFAULT_FOLDERISH_TYPE, DEFAULT_FOLDERISH_TYPE);
-    }
-
     /**
      * Creates Documents, in a hierarchical way, copying the content stored in the zip file.
      *

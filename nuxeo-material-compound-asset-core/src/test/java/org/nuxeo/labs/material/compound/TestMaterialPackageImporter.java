@@ -97,7 +97,7 @@ public class TestMaterialPackageImporter {
         Assert.assertEquals("sample", material.getPropertyValue("dc:title"));
 
         // Check the type of the result.
-        Assert.assertEquals("Material", material.getType());
+        Assert.assertEquals("CompoundAsset", material.getType());
 
         // There are 4 total files included in the sample.
         String components[] = (String[]) material.getPropertyValue(COMPONENTS_XPATH);

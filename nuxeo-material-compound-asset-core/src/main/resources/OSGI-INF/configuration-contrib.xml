@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<component name="org.nuxeo.labs.material.compound.configuration" version="1.0">
+    <extension point="configuration" target="org.nuxeo.runtime.ConfigurationService">
+        <property name="org.nuxeo.labs.material.compound.configuration.extensions">
+            u3m;xtex
+        </property>
+    </extension>
+</component>

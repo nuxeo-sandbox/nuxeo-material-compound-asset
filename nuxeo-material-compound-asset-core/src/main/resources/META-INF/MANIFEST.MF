@@ -8,4 +8,5 @@ Bundle-ManifestVersion: 2
 Bundle-SymbolicName: nuxeo-material-compound-asset-core;singleton=true
 Nuxeo-Component: OSGI-INF/filemanager-plugin-contrib.xml,
     OSGI-INF/schema-contrib.xml,
-    OSGI-INF/type-contrib.xml
+    OSGI-INF/type-contrib.xml,
+    OSGI-INF/configuration-contrib.xml

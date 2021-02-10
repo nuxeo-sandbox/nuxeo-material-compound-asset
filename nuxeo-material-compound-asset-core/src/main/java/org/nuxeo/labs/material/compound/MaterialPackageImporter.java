@@ -23,11 +23,17 @@ package org.nuxeo.labs.material.compound;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.nuxeo.common.utils.FileUtils;
-import org.nuxeo.ecm.core.api.*;
+import org.nuxeo.ecm.core.api.Blob;
+import org.nuxeo.ecm.core.api.CloseableFile;
+import org.nuxeo.ecm.core.api.CoreSession;
+import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.DocumentModelList;
+import org.nuxeo.ecm.core.api.PathRef;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
 import org.nuxeo.ecm.platform.filemanager.api.FileImporterContext;
 import org.nuxeo.ecm.platform.filemanager.service.extension.AbstractFileImporter;
-import org.nuxeo.ecm.platform.types.TypeManager;
+import org.nuxeo.runtime.api.Framework;
+import org.nuxeo.runtime.services.config.ConfigurationService;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -38,7 +44,13 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import static org.nuxeo.labs.material.compound.MaterialPackageConstants.*;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.ARCHIVE_XPATH;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.CHILD_FOLDERISH_TYPE;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.COMPONENTS_XPATH;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.COMPONENT_FACET;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.COMPOUNDS_XPATH;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.COMPOUND_FACET;
+import static org.nuxeo.labs.material.compound.MaterialPackageConstants.EXTENSION_CONF_PROPERTY;
 
 /**
  * Imports Material Zip package into Nuxeo.
@@ -57,11 +69,13 @@ public class MaterialPackageImporter extends AbstractFileImporter {
      * @return
      */
     public boolean isValid(ZipFile zip) {
+        ConfigurationService configurationService = Framework.getService(ConfigurationService.class);
+        List<String> extensions = Arrays.asList(configurationService.getProperty(EXTENSION_CONF_PROPERTY).split(";"));
         // Check if this is a Material package.
         Enumeration<? extends ZipEntry> entries = zip.entries();
         while (entries.hasMoreElements()) {
             ZipEntry entry = entries.nextElement();
-            if (SUPPORTED_EXTENSIONS.contains(FileUtils.getFileExtension(entry.getName().toLowerCase()))) {
+            if (extensions.contains(FileUtils.getFileExtension(entry.getName().toLowerCase()))) {
                 return true;
             }
         }
@@ -158,7 +172,7 @@ public class MaterialPackageImporter extends AbstractFileImporter {
                 PathRef targetFolderishPathRef = new PathRef(context.getParentPath());
                 DocumentModel targetFolderishDoc = context.getSession().getDocument(targetFolderishPathRef);
 
-                UnzipToDocuments unzipToDocs = new UnzipToDocuments(targetFolderishDoc, context.getBlob(), ROOT_FOLDERISH_TYPE, CHILD_FOLDERISH_TYPE);
+                UnzipToDocuments unzipToDocs = new UnzipToDocuments(targetFolderishDoc, context.getBlob(), getDocType(), CHILD_FOLDERISH_TYPE);
 
                 // First extract the zip file, creating Nuxeo documents...
                 DocumentModel materialDoc = unzipToDocs.run();

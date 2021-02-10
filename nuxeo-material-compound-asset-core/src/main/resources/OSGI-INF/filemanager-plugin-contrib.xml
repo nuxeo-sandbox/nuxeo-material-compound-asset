@@ -2,7 +2,7 @@
 <component name="org.nuxeo.labs.material.compound.filemanager" version="1.0">
     <extension target="org.nuxeo.ecm.platform.filemanager.service.FileManagerService" point="plugins">
         <!-- low order, we want to be called before ExportedArchivePlugin and CSVArchivePlugin -->
-        <plugin name="MaterialToDocuments" class="org.nuxeo.labs.material.compound.MaterialPackageImporter" order="0">
+        <plugin name="MaterialToDocuments" class="org.nuxeo.labs.material.compound.MaterialPackageImporter" order="0" docType="CompoundAsset">
             <filter>application/zip</filter>
         </plugin>
     </extension>
