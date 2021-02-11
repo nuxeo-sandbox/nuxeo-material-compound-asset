@@ -176,6 +176,8 @@ public class UnzipToDocuments {
     private boolean shouldIgnoreEntry(String fileName) {
         if (fileName.startsWith("__MACOSX/")
             || fileName.startsWith(".")
+            || fileName.contentEquals("desktop.ini")
+            || fileName.contentEquals("Thumbs.db")
             || fileName.startsWith("Icon")
             || fileName.contentEquals("../")
             || fileName.endsWith(".DS_Store")) {
